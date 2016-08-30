@@ -1,0 +1,53 @@
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~ Example 1 (desugared and normalized)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+{
+  val students$1 = University.students
+  val courses$1 = University.courses
+  val attends$1 = University.attends
+  val x$3 = for {
+    s <- {
+      students$1
+    }
+    c <- {
+      courses$1
+    }
+    a$2 <- {
+      attends$1
+    }
+    if {
+      val sid$1 = a$2.sid
+      val id$1 = s.id
+      val `==$1` = sid$1 == id$1
+      val cid$1 = a$2.cid
+      val id$2 = c.id
+      val `==$2` = cid$1 == id$2
+      val x$1 = `==$1` && `==$2`
+      x$1
+    }
+  } yield {
+    val x$2 = (s, a$2, c)
+    x$2
+  }
+  x$3
+}
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~ elementOf
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+s   elementOf students$1
+c   elementOf courses$1
+a$2 elementOf attends$1
+x$2 elementOf x$3
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~ equals
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+sid$1 equals a$2.sid	// via value definition
+id$1  equals s.id	// via value definition
+cid$1 equals a$2.cid	// via value definition
+id$2  equals c.id	// via value definition
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
