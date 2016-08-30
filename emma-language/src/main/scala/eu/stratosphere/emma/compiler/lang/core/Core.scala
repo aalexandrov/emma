@@ -4,6 +4,7 @@ package compiler.lang.core
 import compiler.Common
 import compiler.lang.AlphaEq
 import compiler.lang.comprehension.Comprehension
+import compiler.lang.holopt.Schema
 import compiler.lang.source.Source
 
 /** Core language. */
@@ -14,7 +15,8 @@ trait Core extends Common
   with DSCF
   with Pickling
   with CoreValidate
-  with Comprehension {
+  with Comprehension 
+  with Schema {
   this: AlphaEq with Source =>
 
   import UniverseImplicits._
