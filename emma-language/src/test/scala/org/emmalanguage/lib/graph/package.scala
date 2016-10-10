@@ -17,12 +17,11 @@ package org.emmalanguage
 package lib.graph
 
 import org.emmalanguage.api._
+import model._
 
 import scala.Ordering.Implicits._
 import scala.reflect.ClassTag
 import scala.reflect.runtime.universe._
-import scala.language.implicitConversions
-import model._
 
 // -----------------------------------------------------------------------------
 // Data model
