@@ -178,17 +178,33 @@ object SparkRDD {
   // (these should correspond to `compiler.ir.ComprehensionCombinators`)
   // ---------------------------------------------------------------------------
 
-  def cross[A : Meta, B : Meta]
-    (xs: DataBag[A], ys: DataBag[B])
-    (implicit spark: SparkSession): DataBag[(A,B)] = (xs, ys) match {
-    case (xsRdd: SparkRDD[A], ysRdd: SparkRDD[B]) => xsRdd.rep.cartesian(ysRdd.rep)
+  def cross[A: Meta, B: Meta](xs: DataBag[A], ys: DataBag[B])
+    (implicit spark: SparkSession): DataBag[(A, B)] = {
+    val rddOf = new RDDExtractor(spark)
+    (xs, ys) match {
+      case (rddOf(xsRdd), rddOf(ysRdd)) => xsRdd cartesian ysRdd
+    }
   }
 
-  def equiJoin[A : Meta, B : Meta, K : Meta]
-    (keyx: A => K, keyy: B => K)
-    (xs: DataBag[A], ys: DataBag[B])
-    (implicit spark: SparkSession): DataBag[(A,B)] = (xs, ys) match {
-    case (xsRdd: SparkRDD[A], ysRdd: SparkRDD[B]) =>
-      xsRdd.rep.map(x => (keyx(x), x)).join(ysRdd.rep.map(y => (keyy(y), y))).map(_._2)
+  def equiJoin[A: Meta, B: Meta, K: Meta](
+    keyx: A => K, keyy: B => K)(xs: DataBag[A], ys: DataBag[B]
+  )(implicit spark: SparkSession): DataBag[(A, B)] = {
+    val rddOf = new RDDExtractor(spark)
+    (xs, ys) match {
+      case (rddOf(xsRdd), rddOf(ysRdd)) =>
+        (xsRdd.map(extend(keyx)) join ysRdd.map(extend(keyy))).values
+    }
+  }
+
+  private def extend[X, K](k: X => K): X => (K, X) =
+    x => (k(x), x)
+
+  private class RDDExtractor(spark: SparkSession) {
+    def unapply[A: Meta](bag: DataBag[A]): Option[RDD[A]] = bag match {
+      case (bag: SparkRDD[A]) => Some(bag.rep)
+      case (bag: SparkDataset[A]) => Some(bag.rep.rdd)
+      case (bag: DataBag[A]) => Some(spark.sparkContext.parallelize(bag.fetch()))
+      case _ => None
+    }
   }
 }
