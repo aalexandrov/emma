@@ -46,7 +46,7 @@ trait BaseKMeansSpec extends FlatSpec with Matchers with BeforeAndAfter {
     deleteRecursive(new File(path))
   }
 
-  "KMeans" should "cluster points around the corners of a hypercube" ignore {
+  "KMeans" should "cluster points around the corners of a hypercube" in {
     val exp =
       clusters(for {
         line <- Source.fromFile(s"$path/clusters.tsv").getLines().toSet[String]
