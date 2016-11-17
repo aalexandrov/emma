@@ -35,8 +35,7 @@ trait Compiler extends AlphaEq
   with LibSupport
   with Source
   with Core
-  with Backend
-  with ControlFlow {
+  with Backend {
 
   /** The underlying universe object. */
   override val universe: Universe

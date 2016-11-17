@@ -33,23 +33,29 @@ class DSCFSpec extends BaseCompilerSpec {
       tree => time(DSCF.transform(tree), "dscf")
     ).compose(_.tree)
 
+  val undscfPipeline: u.Expr[Any] => u.Tree =
+    pipeline(typeCheck = true)(
+      Core.anf,
+      tree => time(DSCF.inverse(tree), "undscf")
+    ).compose(_.tree)
+
   val anfPipeline: u.Expr[Any] => u.Tree =
     pipeline(typeCheck = true)(
       Core.anf
     ).compose(_.tree)
 
   "While Loop" - {
-    "with trivial body" in {
+    "with trivial body" - {
 
-      val act = dscfPipeline(u.reify {
+      val lhs = u.reify {
         var i = 0
         while (i < 100) {
           i += 1
         }
         println(i)
-      })
+      }
 
-      val exp = anfPipeline(u.reify {
+      val rhs = u.reify {
         val i$1 = 0
         def while$1(i$2: Int): Unit = {
           val x$1 = i$2 < 100
@@ -64,9 +70,10 @@ class DSCFSpec extends BaseCompilerSpec {
           else suffix$1(i$2)
         }
         while$1(i$1)
-      })
+      }
 
-      act shouldBe alphaEqTo(exp)
+      "dscf" in (dscfPipeline(lhs) shouldBe alphaEqTo(anfPipeline(rhs)))
+      "undscf" in (anfPipeline(lhs) shouldBe alphaEqTo(undscfPipeline(rhs)))
     }
 
     "with non-trivial body" in {

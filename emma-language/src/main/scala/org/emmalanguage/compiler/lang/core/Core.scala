@@ -20,11 +20,13 @@ import compiler.Common
 import compiler.lang.AlphaEq
 import compiler.lang.comprehension.Comprehension
 import compiler.lang.source.Source
+import compiler.lang.cf.ControlFlow
 
 /** Core language. */
 trait Core extends Common
   with ANF
   with Comprehension
+  with ControlFlow
   with CoreValidate
   with CSE
   with DCE

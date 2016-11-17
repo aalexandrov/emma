@@ -18,6 +18,7 @@ package compiler.lang.core
 
 import compiler.Common
 import compiler.lang.source.Source
+import compiler.lang.cf.ControlFlow
 import util.Monoids
 
 import cats.std.all._
@@ -260,9 +261,27 @@ private[core] trait DSCF extends Common {
                       core.DefCall()(sufMeth)(Seq.empty)))): _*)(
                 loopCall)
           }
-      }.andThen { case Attr.acc(tree, _ :: params :: _) =>
+      } andThen { case Attr.acc(tree, _ :: params :: _) =>
         api.Tree.refresh(params: _*)(tree) // Refresh all DefDef parameters.
-      }
+    }
+
+    lazy val syntheticVarFlags = {
+      import u.addFlagOps
+      u.Flag.SYNTHETIC | u.Flag.MUTABLE
+    }
+
+    /** The Direct-Style Control-Flow (DSCF) inverse transformation. */
+    lazy val inverse: u.Tree => u.Tree = tree => {
+      val graph = ControlFlow.cfg(API.bagSymbol)(tree)
+      api.TopDown
+        .synthesize(Attr.group {
+          case param @ api.ParDef(lhs, _, _) =>
+            lhs -> api.TermSym.free(lhs.name, lhs.info, syntheticVarFlags)
+        })
+        .transformWith {
+          case Attr(t @ core.Let(vals, defs, expr), a, i, s) => t
+        }(tree).tree
+    }
 
     // ---------------
     // Helper methods
