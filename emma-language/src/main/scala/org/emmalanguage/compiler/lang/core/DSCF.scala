@@ -273,12 +273,27 @@ private[core] trait DSCF extends Common {
     /** The Direct-Style Control-Flow (DSCF) inverse transformation. */
     lazy val inverse: u.Tree => u.Tree = tree => {
       val graph = ControlFlow.cfg(API.bagSymbol)(tree)
+      val parBindings = graph.defs.values.collect {
+        case core.ParDef(lhs, rhs@core.DefCall(_, _, _, Seq(args@_*)), _) =>
+          lhs -> args.collect({ case core.ValRef(arg) => arg }).toSet
+      }
+      val varMap = (for {
+        (par, bindings) <- parBindings
+        sVar = api.TermSym.free(par.name, par.info, syntheticVarFlags)
+        sBnd <- bindings
+      } yield sBnd -> sVar).toMap
+
       api.TopDown
-        .synthesize(Attr.group {
-          case param @ api.ParDef(lhs, _, _) =>
-            lhs -> api.TermSym.free(lhs.name, lhs.info, syntheticVarFlags)
-        })
+        .accumulate {
+          case core.ValDef(lhs, _, _)
+            if varMap.contains(lhs) => Set(varMap(lhs))
+        }
         .transformWith {
+          case Attr.acc(t @ core.ValDef(lhs, rhs, flags), defined :: _)
+            if varMap.contains(lhs) && defined(varMap(lhs)) =>
+            val z = lhs
+            val u = varMap.contains(lhs)
+            t
           case Attr(t @ core.Let(vals, defs, expr), a, i, s) => t
         }(tree).tree
     }

@@ -60,11 +60,11 @@ class DSCFSpec extends BaseCompilerSpec {
         def while$1(i$2: Int): Unit = {
           val x$1 = i$2 < 100
           def body$1(i$3: Int): Unit = {
-            val i$2 = i$3 + 1
-            while$1(i$2)
+            val i$4 = i$3 + 1
+            while$1(i$4)
           }
-          def suffix$1(i$4: Int): Unit = {
-            println(i$4)
+          def suffix$1(i$5: Int): Unit = {
+            println(i$5)
           }
           if (x$1) body$1(i$2)
           else suffix$1(i$2)
