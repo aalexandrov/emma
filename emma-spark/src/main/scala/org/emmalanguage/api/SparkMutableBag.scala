@@ -71,9 +71,21 @@ object SparkMutableBag {
     if (ttag.tpe == typeOf[Long]) IndexedRDD.longSer.asInstanceOf[KeySerializer[K]]
     else if (ttag.tpe == typeOf[String]) IndexedRDD.stringSer.asInstanceOf[KeySerializer[K]]
     else if (ttag.tpe == typeOf[Short]) IndexedRDD.shortSer.asInstanceOf[KeySerializer[K]]
+    else if (ttag.tpe == typeOf[Char]) charSer.asInstanceOf[KeySerializer[K]]
     else if (ttag.tpe == typeOf[Int]) IndexedRDD.intSet.asInstanceOf[KeySerializer[K]]
     else if (ttag.tpe == typeOf[BigInt]) IndexedRDD.bigintSer.asInstanceOf[KeySerializer[K]]
     else if (ttag.tpe == typeOf[UUID]) IndexedRDD.uuidSer.asInstanceOf[KeySerializer[K]]
     else throw new RuntimeException(s"Unsupported Key type ${ttag.tpe}")
+  }
+
+  private val charSer = new KeySerializer[Char] {
+    //@formatter:off
+    def toBytes(k: Char) = Array(
+      ((k >>  8) & 0xFF).toByte,
+      ( k        & 0xFF).toByte)
+    def fromBytes(b: Array[Byte]): Char =
+      ((b(0).toInt << 8) & (0xFF << 8) |
+        b(1).toInt       &  0xFF).toChar
+    //@formatter:on
   }
 }
