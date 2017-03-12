@@ -29,4 +29,8 @@ trait ComprehensionCombinators[E] {
   def equiJoin[A: Meta, B: Meta, K: Meta](
     kx: A => K, ky: B => K)(xs: DataBag[A], ys: DataBag[B]
   )(implicit env: E): DataBag[(A, B)]
+
+  def leftJoin[A: Meta, B: Meta, K: Meta](
+    kx: A => K, ky: B => K)(xs: DataBag[A], ys: DataBag[B]
+  )(implicit env: E): DataBag[(A, Option[B])]
 }

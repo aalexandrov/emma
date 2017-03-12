@@ -50,12 +50,22 @@ object FlinkOps extends ComprehensionCombinators[FlinkEnv] with Runtime[FlinkEnv
   }
 
   def equiJoin[A: Meta, B: Meta, K: Meta](
-    keyx: A => K, keyy: B => K)(xs: DataBag[A], ys: DataBag[B]
+    kx: A => K, ky: B => K)(xs: DataBag[A], ys: DataBag[B]
   )(implicit flink: FlinkEnv): DataBag[(A, B)] = {
     val datasetOf = new DataSetExtractor(flink)
     (xs, ys) match {
       case (datasetOf(xsDS), datasetOf(ysDS)) =>
-        (xsDS join ysDS) where keyx equalTo keyy
+        (xsDS join ysDS) where kx equalTo ky
+    }
+  }
+
+  def leftJoin[A: Meta, B: Meta, K: Meta](
+    kx: A => K, ky: B => K)(xs: DataBag[A], ys: DataBag[B]
+  )(implicit flink: FlinkEnv): DataBag[(A, Option[B])] = {
+    val datasetOf = new DataSetExtractor(flink)
+    (xs, ys) match {
+      case (datasetOf(xsDS), datasetOf(ysDS)) =>
+        ((xsDS leftOuterJoin ysDS) where kx equalTo ky).apply((x: A, y: B) => (x, Option(y)))
     }
   }
 

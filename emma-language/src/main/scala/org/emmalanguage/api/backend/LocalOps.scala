@@ -50,6 +50,13 @@ object LocalOps extends ComprehensionCombinators[LocalEnv] with Runtime[LocalEnv
     if kx(x) == ky(y)
   } yield (x, y)
 
+  def leftJoin[A: Meta, B: Meta, K: Meta](
+    kx: A => K, ky: B => K)(xs: DataBag[A], ys: DataBag[B]
+  )(implicit env: LocalEnv): DataBag[(A, Option[B])] = for {
+    x <- xs
+    y <- left join ys on (kx(x) == ky(_))
+  } yield (x, y)
+
   //--------------------------------------------------------
   // Runtime
   //--------------------------------------------------------

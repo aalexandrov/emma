@@ -40,7 +40,6 @@ object SparkOps extends ComprehensionCombinators[SparkSession] with Runtime[Spar
   // ComprehensionCombinators
   //----------------------------------------------------------------------------
 
-  /** Dummy `cross` node. */
   def cross[A: Meta, B: Meta](
     xs: DataBag[A], ys: DataBag[B]
   )(implicit spark: SparkSession): DataBag[(A, B)] = {
@@ -50,19 +49,25 @@ object SparkOps extends ComprehensionCombinators[SparkSession] with Runtime[Spar
     }
   }
 
-  /** Dummy `equiJoin` node. */
   def equiJoin[A: Meta, B: Meta, K: Meta](
     kx: A => K, ky: B => K)(xs: DataBag[A], ys: DataBag[B]
   )(implicit spark: SparkSession): DataBag[(A, B)] = {
     val rddOf = new RDDExtractor(spark)
     (xs, ys) match {
       case (rddOf(xsRDD), rddOf(ysRDD)) =>
-        (xsRDD.map(extend(kx)) join ysRDD.map(extend(ky))).values
+        (xsRDD.keyBy(kx) join ysRDD.keyBy(ky)).values
     }
   }
 
-  private def extend[X, K](k: X => K): X => (K, X) =
-    x => (k(x), x)
+  def leftJoin[A: Meta, B: Meta, K: Meta](
+    kx: A => K, ky: B => K)(xs: DataBag[A], ys: DataBag[B]
+  )(implicit spark: SparkSession): DataBag[(A, Option[B])] = {
+    val rddOf = new RDDExtractor(spark)
+    (xs, ys) match {
+      case (rddOf(xsRDD), rddOf(ysRDD)) =>
+        (xsRDD.keyBy(kx) leftOuterJoin ysRDD.keyBy(ky)).values
+    }
+  }
 
   private class RDDExtractor(spark: SparkSession) {
     def unapply[A: Meta](bag: DataBag[A]): Option[RDD[A]] = bag match {
