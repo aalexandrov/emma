@@ -16,14 +16,26 @@
 package org.emmalanguage
 package examples.graphs
 
-import api.emma
+import api._
+import examples.graphs.model._
 
-/** Graph model objects. */
-object model {
-  case class Edge[V](src: V, dst: V)
-  case class LEdge[V, L](@emma.pk src: V, @emma.pk dst: V, label: L)
-  case class LVertex[V, L](@emma.pk id: V, label: L)
-  case class Triangle[V](x: V, y: V, z: V)
-  case class Message[K, V](@emma.pk tgt: K, payload: V)
-  case class AdjacencyList[V](@emma.pk id: V, neighbours: Array[V])
+import org.apache.spark.sql.SparkSession
+
+class SparkPageRankIntegrationSpec extends BasePageRankIntegrationSpec {
+
+  def pageRankChar(edges: Seq[Edge[Char]]): Seq[LVertex[Char, Double]] =
+    emma.onSpark {
+      PageRank[Char](dampingFactor, iterations)(DataBag(edges)).fetch()
+    }
+
+  def pageRankString(edges: Seq[Edge[String]]): Seq[LVertex[String, Double]] =
+    emma.onSpark {
+      PageRank[String](dampingFactor, iterations)(DataBag(edges)).fetch()
+    }
+
+  implicit lazy val sparkSession =
+    SparkSession.builder()
+      .master("local[*]")
+      .appName(this.getClass.getSimpleName)
+      .getOrCreate()
 }

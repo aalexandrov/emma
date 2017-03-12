@@ -76,6 +76,23 @@ object FlinkExamplesRunner {
         arg[String]("output")
           .text("labeled vertices path")
           .action((x, c) => c.copy(output = x)))
+    cmd("page-rank")
+      .text("Label undirected graph vertices with component IDs")
+      .children(
+        arg[Double]("damping-factor")
+          .text("damping factor")
+          .action((x, c) => c.copy(epsilon = x))
+          .validate(between("damping-factor", 0, 1.0)),
+        arg[Int]("iterations")
+          .text("number of repeated iterations")
+          .action((x, c) => c.copy(iterations = x))
+          .validate(between("iterations", 0, 100)),
+        arg[String]("input")
+          .text("edges path")
+          .action((x, c) => c.copy(input = x)),
+        arg[String]("output")
+          .text("labeled vertices path")
+          .action((x, c) => c.copy(output = x)))
     cmd("transitive-closure")
       .text("Compute the transitive closure of a directed graph")
       .children(
@@ -151,6 +168,8 @@ object FlinkExamplesRunner {
         // Graphs
         case "connected-components" =>
           Some(connectedComponents(cfg)(flinkExecEnv(cfg)))
+        case "page-rank" =>
+          Some(pageRank(cfg)(flinkExecEnv(cfg)))
         case "transitive-closure" =>
           Some(transitiveClosure(cfg)(flinkExecEnv(cfg)))
         case "triangle-count" =>
@@ -183,6 +202,16 @@ object FlinkExamplesRunner {
       val edges = DataBag.readCSV[Edge[Long]](c.input, c.csv)
       // build the transitive closure
       val paths = ConnectedComponents(edges)
+      // write the results into a file
+      paths.writeCSV(c.output, c.csv)
+    }
+
+  def pageRank(c: Config)(implicit flink: ExecutionEnvironment): Unit =
+    emma.onFlink {
+      // read in set of edges to be used as input
+      val edges = DataBag.readCSV[Edge[Long]](c.input, c.csv)
+      // build the transitive closure
+      val paths = PageRank(c.epsilon, c.iterations)(edges)
       // write the results into a file
       paths.writeCSV(c.output, c.csv)
     }
