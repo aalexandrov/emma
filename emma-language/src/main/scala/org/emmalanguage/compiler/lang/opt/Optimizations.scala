@@ -20,8 +20,9 @@ import compiler.Common
 import compiler.lang.cf.ControlFlow
 import compiler.lang.core.Core
 
-/** Static (compile-time) optimizations. */
+/** Language optimizations. */
 trait Optimizations extends Common
+  with ComprehensionCompiler
   with FoldFusion {
   this: Core with ControlFlow =>
 
@@ -31,5 +32,8 @@ trait Optimizations extends Common
     /** Delegates to [[FoldFusion.foldForestFusion()]]. */
     def foldFusion(cfg: CFG.FlowGraph[u.TermSymbol]): u.Tree => u.Tree =
       FoldFusion.foldForestFusion(cfg)
+
+    /** Delegates to [[ComprehensionCompiler.apply()]]. */
+    def comprehend[C, R](r: Reified[C, R])(c: C): R = ComprehensionCompiler(r)(c)
   }
 }
