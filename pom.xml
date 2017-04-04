@@ -233,6 +233,11 @@
             </dependency>
             <dependency>
                 <groupId>org.emmalanguage</groupId>
+                <artifactId>emma-rt</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.emmalanguage</groupId>
                 <artifactId>emma-quickstart</artifactId>
                 <version>${project.version}</version>
             </dependency>
@@ -881,6 +886,7 @@
         <module>emma-spark</module>
         <module>emma-examples</module>
         <module>emma-gui</module>
+        <module>emma-rt</module>
         <module>emma-quickstart</module>
     </modules>
 
