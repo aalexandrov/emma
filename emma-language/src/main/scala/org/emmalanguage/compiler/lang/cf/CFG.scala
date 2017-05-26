@@ -58,7 +58,7 @@ private[compiler] trait CFG extends Common {
       api.TopDown.withDefDefs.withBindUses.withBindDefs
         .inherit { case core.TermDef(encl) => Option(encl) } (last(None))
         .accumulateWith[Vector[UEdge[u.TermSymbol]]] { // Nesting
-          case Attr.inh(core.ValDef(lhs, _), Some(encl) :: _) =>
+          case Attr.inh(core.BindingDef(lhs, _), Some(encl) :: _) =>
             Vector(LEdge(encl, lhs, ()))
           case Attr.inh(core.DefDef(method, _, _, _), Some(encl) :: _) =>
             Vector(LEdge(encl, method, ()))
