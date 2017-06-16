@@ -49,7 +49,11 @@ class FlinkMacro(val c: blackbox.Context) extends MacroCompiler with FlinkCompil
       Lib.expand,
       Core.lift
     )
+
     // optional optimizing rewrites
+    if (cfg.getBoolean("emma.compiler.flink.native-its")) {
+      xfms += FlinkSpecializeSupport.specializeLoops
+    }
     if (cfg.getBoolean("emma.compiler.opt.cse")) {
       xfms += Core.cse
     }

@@ -16,9 +16,11 @@
 package org.emmalanguage
 package compiler
 
+import flink.FlinkSpecializeSupport
+
 import cats.implicits._
 
-trait FlinkCompiler extends Compiler {
+trait FlinkCompiler extends Compiler with FlinkSpecializeSupport {
 
   override lazy val implicitTypes: Set[u.Type] = API.implicitTypes ++ FlinkAPI.implicitTypes
 
@@ -97,6 +99,16 @@ trait FlinkCompiler extends Compiler {
     }
   }
 
+  trait NtvAPI extends ModuleAPI {
+    //@formatter:off
+    val sym               = api.Sym[org.emmalanguage.api.flink.FlinkNtv.type].asModule
+
+    val iterate           = op("iterate")
+
+    override lazy val ops = Set(iterate)
+    //@formatter:on
+  }
+
   object FlinkAPI extends BackendAPI {
 
     lazy val TypeInformation = api.Type[org.apache.flink.api.common.typeinfo.TypeInformation[Any]].typeConstructor
@@ -115,6 +127,8 @@ trait FlinkCompiler extends Compiler {
     lazy val MutableBag$ = new MutableBag$API(api.Sym[org.emmalanguage.api.FlinkMutableBag.type].asModule)
 
     lazy val Ops = new OpsAPI(api.Sym[org.emmalanguage.api.flink.FlinkOps.type].asModule)
+
+    lazy val Ntv = new NtvAPI {}
 
     lazy val GenericOps = for {
       ops <- Set(DataBag.ops, DataBag$.ops, MutableBag.ops, MutableBag$.ops, Ops.ops)
