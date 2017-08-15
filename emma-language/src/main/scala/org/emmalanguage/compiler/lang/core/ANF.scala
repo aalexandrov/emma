@@ -62,7 +62,7 @@ private[core] trait ANF extends Common {
         // { ..stats; atom }: T
         case Attr.inh(src.TypeAscr(block @ AsBlock(stats, expr), tpe), owner :: _) =>
           if (expr.tpe =:= tpe) block else {
-            val nme = api.TermName.fresh(expr.symbol)
+            val nme = api.TermName.fresh("anf") // (expr.symbol)
             val lhs = api.ValSym(owner, nme, tpe)
             val rhs = core.TypeAscr(expr, tpe)
             val tmp = core.ValDef(lhs, rhs)
@@ -73,7 +73,7 @@ private[core] trait ANF extends Common {
         // { ..stats; atom }.module
         case Attr.inh(src.TermAcc(AsBlock(stats, expr), module), owner :: _) =>
           val rhs = core.TermAcc(expr, module)
-          val nme = api.TermName.fresh(module)
+          val nme = api.TermName.fresh("anf") // (module)
           val lhs = api.ValSym(owner, nme, rhs.tpe)
           val tmp = core.ValDef(lhs, rhs)
           val ref = core.Ref(lhs)
@@ -97,7 +97,7 @@ private[core] trait ANF extends Common {
           } yield stat
 
           val rhs = core.DefCall(expr, method, targs, exprss)
-          val nme = api.TermName.fresh(method)
+          val nme = api.TermName.fresh("anf") // (method)
           val lhs = api.ValSym(owner, nme, rhs.tpe)
           val tmp = core.ValDef(lhs, rhs)
           val ref = core.Ref(lhs)
@@ -123,7 +123,7 @@ private[core] trait ANF extends Common {
 
         // (params) => { ..stats; atom }
         case Attr.none(lambda @ src.Lambda(fun, _, _)) =>
-          val nme = api.TermName.fresh(api.TermName.lambda)
+          val nme = api.TermName.fresh("anf") // (api.TermName.lambda)
           val lhs = api.ValSym(fun.owner, nme, lambda.tpe)
           val tmp = core.ValDef(lhs, lambda)
           val ref = core.Ref(lhs)
@@ -132,7 +132,7 @@ private[core] trait ANF extends Common {
         // if ({ ..stats, cond }) thn else els
         case Attr.inh(src.Branch(AsBlock(stats, cond), thn, els), owner :: _) =>
           val rhs = src.Branch(cond, thn, els)
-          val nme = api.TermName.fresh("if")
+          val nme = api.TermName.fresh("anf") // ("if")
           val lhs = api.ValSym(owner, nme, rhs.tpe)
           val tmp = core.ValDef(lhs, rhs)
           val ref = core.ValRef(lhs)
