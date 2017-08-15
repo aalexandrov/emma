@@ -33,42 +33,41 @@ object kMeans {
    * @param k          Number of clusters
    * @param runs       Number of runs.
    * @param iterations Number of iterations.
+   * @param distance   Distance metric.
    * @param seed       Centroids seed.
    * @param points     Input points.
-   * @tparam PID Point identity type
+   * @tparam PID Point identity type.
    */
   def apply[PID: Meta](
     D: Int,
     k: Int,
     runs: Int,
     iterations: Int,
+    distance: (DVector, DVector) => Double = sqdist,
     seed: Long = 452642543145L
   )(
     points: DataBag[DPoint[PID]]
   ): DataBag[Solution[PID]] = {
     // helper method: orders points `x` based on their distance to `pos`
-    val distanceTo = (pos: DVector) => Ordering.by { x: DPoint[PID] =>
-      sqdist(pos, x.pos)
-    }
+    val distanceTo = (pos: DVector) => Ordering.by((x: DPoint[PID]) => distance(pos, x.pos))
 
     var optSolution = DataBag.empty[Solution[PID]]
-    var minSqrDist = 0.0
+    var minDistance = 0.0
 
     for (run <- 1 to runs) {
       // initialize forgy cluster means
-      var ctrds = DataBag(points.sample(k, RanHash(seed, run).seed))
-
+      var centroids = DataBag(points.sample(k, RanHash(seed, run).seed))
       // initialize solution: label points with themselves
       var solution = for (p <- points) yield LDPoint(p.id, p.pos, p)
 
       for (_ <- 1 to iterations) {
         // update solution: label each point with its nearest cluster
         solution = for (s <- solution) yield {
-          val closest = ctrds.min(distanceTo(s.pos))
+          val closest = centroids.min(distanceTo(s.pos))
           s.copy(label = closest)
         }
         // update centroid positions as mean of associated points
-        ctrds = for {
+        centroids = for {
           Group(cid, ps) <- solution.groupBy(_.label.id)
         } yield {
           val sum = stat.sum(D)(ps.map(_.pos))
@@ -78,12 +77,12 @@ object kMeans {
         }
       }
 
-      val sumSqrDist = (for (p <- solution) yield {
-        sqdist(p.label.pos, p.pos)
+      val sumDistance = (for (p <- solution) yield {
+        distance(p.label.pos, p.pos)
       }).sum
 
-      if (run <= 1 || sumSqrDist < minSqrDist) {
-        minSqrDist = sumSqrDist
+      if (run <= 1 || sumDistance < minDistance) {
+        minDistance = sumDistance
         optSolution = solution
       }
     }
