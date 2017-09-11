@@ -319,6 +319,21 @@ private[core] trait DSCF extends Common {
         else (body, api.Tree.rename(indx.toSeq)(cond).asInstanceOf[u.Block])
       }
 
+      @tailrec
+      def prune(
+        vals: Seq[u.ValDef], frontier: Set[u.TermSymbol]
+      ): Seq[u.ValDef] = {
+        val newFrontier = (for {
+          core.BindingDef(lhs, rhs) <- vals
+          if frontier contains lhs
+          sym <- Set(lhs) ++ api.Tree.refs(rhs)
+        } yield sym) (breakOut): Set[u.TermSymbol]
+
+        val delta = newFrontier diff frontier
+        if (delta.nonEmpty) prune(vals, newFrontier)
+        else vals.filter(frontier contains _.symbol.asTerm)
+      }
+
       api.BottomUp.unsafe.withOwner.transformWith {
         // a let block with nested `while($cond) { $body }` control-flow
         //@formatter:off
@@ -346,16 +361,24 @@ private[core] trait DSCF extends Common {
             && is[loopBody](b)
             && is[suffix](s) =>
           //@formatter:on
-          val indx = (for {
-            (core.Ref(y), x) <- ags2 zip pars.map(_.symbol)
-          } yield y -> varOf(x)) (breakOut): Map[u.TermSymbol, u.Symbol]
-
           val vars = mkVarDefsWithDefaults(pars, ags1)
           val muts = mkMuts(pars.map(_.symbol), ags2)
-          val blc1 = src.Block(pre2 ++ sbod ++ muts, cond)
-          val (bod1, con1) = split(indx)(
-            src.Block(blc1.stats, api.Term.unit),
-            src.Block(Seq.empty, blc1.expr))
+
+          val con1 = {
+            val pref = prune(pre2, api.Tree.refs(cond))
+            val blck = src.Block(pref, cond)
+            api.Tree.refresh(pref.map(_.symbol))(blck)
+          }
+          val bod1 = {
+            val pref = prune(pre2, (sbod ++ muts).flatMap(api.Tree.refs).toSet)
+            val blck = src.Block(pref ++ sbod ++ muts, api.Term.unit)
+            api.Tree.refresh(pref.map(_.symbol))(blck)
+          }
+          val suf1 = {
+            val pref = prune(pre2, api.Tree.refs(suff))
+            val blck = src.Block(pref ++ suff.stats, suff.expr)
+            api.Tree.refresh(pref.map(_.symbol))(blck).asInstanceOf[u.Block]
+          }
 
           src.Block(
             Seq.concat(
@@ -365,9 +388,9 @@ private[core] trait DSCF extends Common {
                 src.While(
                   con1,
                   bod1)),
-              suff.stats
+              suf1.stats
             ),
-            suff.expr)
+            suf1.expr)
 
         // a let block with nested `do { $body } while($cond)` control-flow
         //@formatter:off

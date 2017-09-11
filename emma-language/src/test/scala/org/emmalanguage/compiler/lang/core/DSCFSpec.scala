@@ -267,8 +267,7 @@ class DSCFSpec extends BaseCompilerSpec {
       "dscf" in {
         val act = dscfPipeline(src)
         val exp = anfPipeline(tgt)
-        println(act)
-        println(exp)
+        act shouldBe alphaEqTo(exp)
         act shouldBe alphaEqTo(exp)
       }
       "dscf inverse" in {
