@@ -16,11 +16,14 @@
 package org.emmalanguage
 package compiler
 
+import flink.FlinkBackend
 import flink.FlinkSpecializeSupport
 
 import cats.implicits._
 
-trait FlinkCompiler extends Compiler with FlinkSpecializeSupport {
+trait FlinkCompiler extends Compiler
+  with FlinkBackend
+  with FlinkSpecializeSupport {
 
   override lazy val implicitTypes: Set[u.Type] = API.implicitTypes ++ FlinkAPI.implicitTypes
 
@@ -105,12 +108,19 @@ trait FlinkCompiler extends Compiler with FlinkSpecializeSupport {
 
     val iterate           = op("iterate")
 
-    override lazy val ops = Set(iterate)
+    val map               = op("map")
+    val flatMap           = op("flatMap")
+    val filter            = op("filter")
+
+    val broadcast         = op("broadcast")
+    val bag               = op("bag")
+
+    override lazy val ops = Set(iterate, map, flatMap, filter, broadcast, bag)
     //@formatter:on
   }
 
   object FlinkAPI extends BackendAPI {
-
+    lazy val RuntimeContext = api.Type[org.apache.flink.api.common.functions.RuntimeContext]
     lazy val TypeInformation = api.Type[org.apache.flink.api.common.typeinfo.TypeInformation[Any]].typeConstructor
     lazy val ExecutionEnvironment = api.Type[org.apache.flink.api.scala.ExecutionEnvironment]
 

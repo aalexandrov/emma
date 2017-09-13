@@ -18,10 +18,22 @@ package api.flink
 
 import api._
 
+import org.apache.flink.api.common.functions.BroadcastVariableInitializer
+import org.apache.flink.api.common.functions.RichFilterFunction
+import org.apache.flink.api.common.functions.RichFlatMapFunction
+import org.apache.flink.api.common.functions.RichMapFunction
+import org.apache.flink.api.common.functions.RuntimeContext
 import org.apache.flink.api.scala.DataSet
 import org.apache.flink.api.scala.{ExecutionEnvironment => FlinkEnv}
+import org.apache.flink.configuration.Configuration
+import org.apache.flink.util.Collector
 
 object FlinkNtv {
+
+  type R = RuntimeContext
+
+  import FlinkDataSet.typeInfoForType
+  import Meta.Projections.ctagFor
 
   //----------------------------------------------------------------------------
   // Specialized combinators
@@ -33,6 +45,72 @@ object FlinkNtv {
     implicit flink: FlinkEnv
   ): DataBag[A] = xs match {
     case FlinkDataSet(us) => FlinkDataSet(us.iterate(N)(unlift(body)))
+  }
+
+  //----------------------------------------------------------------------------
+  // Broadcast support
+  //----------------------------------------------------------------------------
+
+  def broadcast[A: Meta, B: Meta](xs: DataBag[A], ys: DataBag[B])(
+    implicit flink: FlinkEnv
+  ): DataBag[A] = (xs, ys) match {
+    case (FlinkDataSet(us), FlinkDataSet(vs)) =>
+      us.withBroadcastSet(vs, ys.uuid.toString)
+      xs
+  }
+
+  def bag[A: Meta](xs: DataBag[A])(ctx: R): DataBag[A] =
+    ctx.getBroadcastVariableWithInitializer(
+      xs.uuid.toString,
+      new BroadcastVariableInitializer[A, DataBag[A]] {
+        override def initializeBroadcastVariable(data: java.lang.Iterable[A]) = {
+          val ys = Vector.newBuilder[A]
+          val it = data.iterator()
+          while (it.hasNext) ys += it.next()
+          DataBag(ys.result())
+        }
+      })
+
+  def map[A: Meta, B: Meta](h: R => A => B)(xs: DataBag[A])(
+    implicit flink: FlinkEnv
+  ): DataBag[B] = xs match {
+    case FlinkDataSet(us) => FlinkDataSet(us.map(new RichMapFunction[A, B] {
+      var f: A => B = _
+
+      override def open(parameters: Configuration): Unit =
+        f = h(getRuntimeContext)
+
+      def map(x: A): B =
+        f(x)
+    }))
+  }
+
+  def flatMap[A: Meta, B: Meta](h: R => A => DataBag[B])(xs: DataBag[A])(
+    implicit flink: FlinkEnv
+  ): DataBag[B] = xs match {
+    case FlinkDataSet(us) => FlinkDataSet(us.flatMap(new RichFlatMapFunction[A, B] {
+      var f: A => DataBag[B] = _
+
+      override def open(parameters: Configuration): Unit =
+        f = h(getRuntimeContext)
+
+      def flatMap(x: A, out: Collector[B]): Unit =
+        f(x).collect().foreach(out.collect)
+    }))
+  }
+
+  def filter[A: Meta](h: R => A => Boolean)(xs: DataBag[A])(
+    implicit flink: FlinkEnv
+  ): DataBag[A] = xs match {
+    case FlinkDataSet(us) => FlinkDataSet(us.filter(new RichFilterFunction[A] {
+      var p: A => Boolean = _
+
+      override def open(parameters: Configuration): Unit =
+        p = h(getRuntimeContext)
+
+      def filter(x: A): Boolean =
+        p(x)
+    }))
   }
 
   //----------------------------------------------------------------------------
