@@ -31,10 +31,10 @@ trait Common extends AST with API {
   // --------------------------------------------------------------------------
 
   /** Standard pipeline prefix. Brings a tree into a form convenient for transformation. */
-  def preProcess: Seq[TreeTransform]
+  def preProcess: TreeTransform
 
   /** Standard pipeline suffix. Brings a tree into a form acceptable for `scalac` after being transformed. */
-  def postProcess: Seq[TreeTransform]
+  def postProcess: TreeTransform
 
   /** Combines a sequence of `transformations` into a pipeline with pre- and post-processing. */
   def pipeline(
