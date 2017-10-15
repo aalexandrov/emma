@@ -71,7 +71,7 @@ trait Compiler extends AlphaEq
     typeCheck: Boolean = false, withPre: Boolean = true, withPost: Boolean = true
   )(
     transformations: TreeTransform*
-  ): u.Tree => u.Tree = {
+  ): TreeTransform = {
 
     val bld = Seq.newBuilder[TreeTransform]
     //@formatter:off
@@ -82,7 +82,7 @@ trait Compiler extends AlphaEq
     //@formatter:on
     val steps = bld.result()
 
-    TreeTransform("xfrm", steps)
+    TreeTransform("pipeline", steps)
   }
 
   /** Loads a sequence of resources (in decreasing priority). */

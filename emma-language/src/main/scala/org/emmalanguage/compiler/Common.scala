@@ -41,7 +41,7 @@ trait Common extends AST with API {
     typeCheck: Boolean = false, withPre: Boolean = true, withPost: Boolean = true
   )(
     transformations: TreeTransform*
-  ): u.Tree => u.Tree
+  ): TreeTransform
 
   /** The identity transformation with pre- and post-processing. */
   def identity(typeCheck: Boolean = false): u.Tree => u.Tree =

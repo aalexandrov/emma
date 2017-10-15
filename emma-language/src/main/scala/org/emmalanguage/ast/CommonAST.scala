@@ -396,100 +396,125 @@ trait CommonAST {
   // Transformations
   // ----------------------------------------------------------------------------------------------
 
-  lazy val TreeTransform = Xfrm
+  type Xfrm = TreeTransform
+  final val Xfrm = TreeTransform
 
   //@formatter:off
-  sealed trait Xfrm {
+  sealed trait TreeTransform {
     def name: String
     def time: Boolean
   }
   private case class XfrmSeq(name: String, seq: Seq[Xfrm], time: Boolean = false) extends Xfrm
   private case class XfrmFun(name: String, fun: Xfrm.Fun, time: Boolean = false) extends Xfrm
 
-  private trait XfrmAlg[B] {
+  trait XfrmAlg[B] {
     def seq(name: String, seq: Seq[B], time: Boolean): B
     def fun(name: String, fun: Xfrm.Fun, time: Boolean): B
   }
   //@formatter:on
 
-  object Xfrm {
+  object TreeTransform {
     type Fun = u.Tree => u.Tree
-
-    val anon = "xfrm"
 
     def fold[B](a: XfrmAlg[B])(xfrm: Xfrm): B = xfrm match {
       case XfrmSeq(name, seq, time) => a.seq(name, seq.map(fold(a)), time)
       case XfrmFun(name, fun, time) => a.fun(name, fun, time)
     }
 
-    def apply(name: String, seq: Seq[TreeTransform]): TreeTransform =
-      new TreeTransform(XfrmSeq(name, seq.map(_.xfrm)))
+    def apply(name: String, seq: Seq[Xfrm]): Xfrm =
+      XfrmSeq(name, seq)
 
-    def apply(name: String, fun: Xfrm.Fun): TreeTransform =
-      new TreeTransform(XfrmFun(name, fun))
+    def apply(name: String, fun: Xfrm.Fun): Xfrm =
+      XfrmFun(name, fun)
   }
 
-  private object XfrmEval {
+  trait XfrmEval {
+    type Dom
+    type Inf
     type Xtr = scalaz.Tree[Inf]
-    type Dom = u.Tree => Res // `eval` interpretation domain
-
-    case class Inf(name: String, time: Option[Long])
 
     case class Res(tree: u.Tree, xtra: Xtr)
 
     case class Acc(tree: u.Tree, accx: Stream[Xtr] = Stream.empty[Xtr])
 
+    val eval: Xfrm => Dom
+
+    def apply(xfrm: Xfrm)(tree: u.Tree): u.Tree
+  }
+
+  /** Just evaluate the tree transform. */
+  object NaiveEval extends XfrmEval {
+    override type Dom = u.Tree => u.Tree
+    override type Inf = Unit
+
+    override val eval = Xfrm.fold(new XfrmAlg[Dom] {
+      def seq(name: String, seq: Seq[Dom], time: Boolean): Dom =
+        Function.chain(seq)
+
+      def fun(name: String, fun: Xfrm.Fun, time: Boolean): Dom =
+        fun
+    }) _
+
+    override def apply(xfrm: Xfrm)(tree: u.Tree): u.Tree =
+      eval(xfrm)(tree)
+  }
+
+  /** Evaluate and time each node. */
+  object TimerEval extends XfrmEval {
+    type Dom = u.Tree => Res
+
+    case class Inf(name: String, time: Long)
+
     implicit val showInf = scalaz.Show.shows[Inf](x => {
-      val name = x.name
-      val time = x.time.map(t => s" (${t / 1e6}ms)").getOrElse("")
-      name + time
+      s"${x.name} (${x.time / 1e6}ms)"
     })
 
     val eval = Xfrm.fold(new XfrmAlg[Dom] {
       def seq(name: String, seq: Seq[Dom], time: Boolean): Dom = tree => {
         val tim1 = System.nanoTime
-        val rs = seq.foldLeft(Acc(tree))((acc, fun) => {
+        val rslt = seq.foldLeft(Acc(tree))((acc, fun) => {
           val rslt = fun(acc.tree)
           Acc(rslt.tree, acc.accx :+ rslt.xtra)
         })
         val tim2 = System.nanoTime
-        val info = Inf(name, if (time) Some(tim2 - tim1) else None)
-        Res(rs.tree, scalaz.Tree.Node(info, rs.accx))
+        val info = Inf(name, tim2 - tim1)
+        Res(rslt.tree, scalaz.Tree.Node(info, rslt.accx))
       }
 
       def fun(name: String, fun: Xfrm.Fun, time: Boolean): Dom = tree => {
         val tim1 = System.nanoTime
         val rslt = fun(tree)
         val tim2 = System.nanoTime
-        val info = Inf(name, if (time) Some(tim2 - tim1) else None)
+        val info = Inf(name, tim2 - tim1)
         Res(rslt, scalaz.Tree.Leaf(info))
       }
     }) _
-  }
 
-  class TreeTransform private[ast](private[ast] val xfrm: Xfrm)
-
-  implicit class TransformationOps(xfrm: TreeTransform) extends (u.Tree => u.Tree) {
-    def apply(tree: u.Tree): u.Tree = {
-      val rslt = XfrmEval.eval(xfrm.xfrm)(tree)
-      // print(rslt.xtra.drawTree)
+    def apply(xfrm: Xfrm)(tree: u.Tree): u.Tree = {
+      val rslt = eval(xfrm)(tree)
+      print(rslt.xtra.drawTree)
       rslt.tree
     }
+  }
 
-    def timed: TreeTransform = new TreeTransform(xfrm.xfrm match {
+  implicit class XfrmOps(xfrm: Xfrm) extends (u.Tree => u.Tree) {
+    def apply(tree: u.Tree): u.Tree =
+      NaiveEval(xfrm)(tree)
+
+    def timed: Xfrm = xfrm match {
       case xfrm: XfrmSeq => xfrm.copy(time = true)
       case xfrm: XfrmFun => xfrm.copy(time = true)
-    })
+    }
 
     def iff(k: String)(implicit cfg: Config): Is =
       new Is(k)
 
     class Is(k: String)(implicit cfg: Config) {
-      def is(v: Boolean): TreeTransform =
+      def is(v: Boolean): Xfrm =
         if (cfg.getBoolean(k) == v) xfrm
         else noop
 
-      def is(v: String): TreeTransform =
+      def is(v: String): Xfrm =
         if (cfg.getString(k) == v) xfrm
         else noop
     }
