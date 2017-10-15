@@ -467,20 +467,20 @@ trait CommonAST {
     }) _
   }
 
-  class TreeTransform private[ast](private[ast] val xfrm: Xfrm) extends (u.Tree => u.Tree) {
+  class TreeTransform private[ast](private[ast] val xfrm: Xfrm)
+
+  implicit class TransformationOps(xfrm: TreeTransform) extends (u.Tree => u.Tree) {
     def apply(tree: u.Tree): u.Tree = {
-      val rslt = XfrmEval.eval(xfrm)(tree)
+      val rslt = XfrmEval.eval(xfrm.xfrm)(tree)
       // print(rslt.xtra.drawTree)
       rslt.tree
     }
 
-    def timed: TreeTransform = new TreeTransform(xfrm match {
+    def timed: TreeTransform = new TreeTransform(xfrm.xfrm match {
       case xfrm: XfrmSeq => xfrm.copy(time = true)
       case xfrm: XfrmFun => xfrm.copy(time = true)
     })
-  }
 
-  implicit class TransformationOps(xfrm: TreeTransform) {
     def iff(k: String)(implicit cfg: Config): Is =
       new Is(k)
 
